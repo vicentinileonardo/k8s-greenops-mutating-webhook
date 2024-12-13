@@ -1,0 +1,93 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vmtemplate-reader
+  namespace: greenops
+rules:
+- apiGroups: ["composition.krateo.io"]
+  resources: ["vmtemplates"]
+  verbs: ["get", "list", "watch", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vmtemplate-reader-binding
+  namespace: greenops
+subjects:
+- kind: ServiceAccount
+  name: default  # or create a specific service account
+  namespace: greenops
+roleRef:
+  kind: Role
+  name: vmtemplate-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vmtemplate-mutation-trigger
+  namespace: greenops
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          # Shared volume that init and main containers can access
+          volumes:
+          - name: tools-volume
+            emptyDir: {}
+
+          # Init container to prepare the environment
+          initContainers:
+          - name: jq-installer
+            image: alpine:latest
+            command: 
+            - sh
+            - -c
+            - |
+              # Install jq
+              apk add --no-cache jq
+              # Copy jq to a shared volume
+              cp /usr/bin/jq /tools/jq
+            
+            # Mount the shared volume
+            volumeMounts:
+            - name: tools-volume
+              mountPath: /tools
+
+          # Main container that uses the prepared tools
+          containers:
+          - name: mutation-trigger
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+
+              CURRENT_TIME=$(date +%s)
+              FUTURE_TIME=$(($CURRENT_TIME + (30 * 24 * 60 * 60)))
+              
+              # Find VmTemplates with schedulingTime in the future (at least 30 days from now)
+              # This assumes schedulingTime is in ISO 8601 format or Unix timestamp
+              kubectl get vmtemplate -n greenops -o json | jq -r '.items[] | select(
+                # Convert schedulingTime to Unix timestamp and compare
+                (.spec.schedulingTime | fromdate) > '$FUTURE_TIME'
+              ) | .metadata.name' | while read -r VMTEMPLATE; do
+                if [ ! -z "$VMTEMPLATE" ]; then
+                  echo "Mutating VmTemplate: $VMTEMPLATE"
+                  
+                  # Trigger mutation with a unique annotation
+                  kubectl patch vmtemplate -n greenops "$VMTEMPLATE" --type=json -p '[
+                    {"op": "add", "path": "/metadata/annotations/greenops-patch-mutation-trigger", "value": "'$(date +%Y-%m-%dT%H:%M:%SZ)'"}
+                  ]'
+                fi
+              done
+
+            # Mount the shared volume
+            volumeMounts:
+            - name: tools-volume
+              mountPath: /tools
+            
+            

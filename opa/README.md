@@ -1,13 +1,11 @@
-# k8s-greenops-mutating-webhook
 
-## How to install
+
+
+TO BE DELETED
+
 
 Source: https://www.openpolicyagent.org/docs/latest/kubernetes-tutorial/
 
-`/opa/admission-controller.yaml` contains all the OPA related configurations
-
-
-Create a namespace for OPA:
 ```bash
 kubectl create namespace opa
 ```
@@ -59,7 +57,8 @@ kubectl create secret tls opa-server --cert=server.crt --key=server.key --namesp
 kubectl apply -f admission-controller.yaml
 ```
 
-Generate the mutating webhook configuration file:
+
+Generate the webhook configuration file:
 
 ```bash
 cat > webhook-configuration.yaml <<EOF
@@ -81,7 +80,7 @@ webhooks:
         apiVersions: ["v1-2-0"]  # Specify the correct version
         resources: ["vmtemplates"]  # Specify the correct resource
     clientConfig:
-      caBundle: $(cat ./opa/certs/ca.crt | base64 | tr -d '\n')
+      caBundle: $(cat ./certs/ca.crt | base64 | tr -d '\n')
       service:
         namespace: opa
         name: opa
@@ -90,7 +89,7 @@ webhooks:
 EOF
 ```
 
-## TODO
+# TODO
 
-Helm Chart for OPA is WIP
-
+- helm chart
+- in values.yaml, we can set bundle address, etc
