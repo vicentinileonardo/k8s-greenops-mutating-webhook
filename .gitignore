@@ -28,3 +28,5 @@ go.work.sum
 /opa/certs/*
 /certs/*
 webhook-configuration.yaml
+
+.DS_Store
