@@ -108,6 +108,9 @@ spec:
             - readOnly: true
               mountPath: /config
               name: opa-config
+          envFrom:
+            - configMapRef:
+                name: opa-env-config
           readinessProbe:
             httpGet:
               path: /health?plugins&bundle
@@ -161,3 +164,11 @@ data:
         polling:
           min_delay_seconds: 60
           max_delay_seconds: 120
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opa-env-config
+  namespace: opa
+data:
+  AI_INFERENCE_SERVER_MOCK_URL: "http://ai-inference-server-mock.ai-inference-server-mock.svc.cluster.local:8080/scheduling"
