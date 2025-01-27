@@ -4,7 +4,7 @@
 
 Source: https://www.openpolicyagent.org/docs/latest/kubernetes-tutorial/
 
-`/opa/admission-controller.yaml` contains all the OPA related configurations
+`/opa/admission-controller.yaml` contains all the OPA related configurations.
 
 
 Create a namespace for OPA:
@@ -12,7 +12,7 @@ Create a namespace for OPA:
 kubectl create namespace opa
 ```
 
-Label kube-system and the opa namespace so that OPA does not control the resources in those namespaces:
+Label kube-system and opa namespaces so that OPA does not control the resources in those namespaces:
 ```bash
 kubectl label ns kube-system openpolicyagent.org/webhook=ignore
 kubectl label ns opa openpolicyagent.org/webhook=ignore
@@ -76,7 +76,7 @@ webhooks:
         values:
         - ignore
     rules:
-      - operations: ["CREATE"]
+      - operations: ["CREATE", "UPDATE"]
         apiGroups: ["composition.krateo.io"]  # Specify the correct API group
         apiVersions: ["v1-2-0"]  # Specify the correct version
         resources: ["vmtemplates"]  # Specify the correct resource
@@ -90,7 +90,14 @@ webhooks:
 EOF
 ```
 
-## TODO
+Apply the mutating webhook configuration:
+```bash
+kubectl apply -f webhook-configuration.yaml
+```
 
-Helm Chart for OPA is WIP
+You can follow the OPA logs to see the webhook requests being issued by the Kubernetes API server:
 
+```bash
+# ctrl-c to exit
+kubectl logs -l app=opa -c opa -f
+```
